@@ -5,6 +5,13 @@
 #MODULES
 from tkinter import *
 from tkinter.ttk import *
+from tkinter import ttk
+from tkinter import filedialog
+from tkinter import simpledialog
+from tkinter import filedialog as tkFileDialog
+from tkinter import simpledialog as tkSimpleDialog
+from PIL import ImageTk, Image, ImageChops, ImageEnhance, ImageFilter
+from exiftool import ExifToolHelper
 
 class ForenImage(Tk):
     """
@@ -15,8 +22,12 @@ class ForenImage(Tk):
         """
         Initial method to construct the rest of the class
         """
-        super().__init__(height=100, width=100)
+        super().__init__()
         self.filepath = StringVar()
+        self.filepaths = StringVar()
+        self.path_error = StringVar()
+        self.image = None
+        self.init_root()
     
     def run():
         self.title = "ForenImage"
@@ -28,16 +39,14 @@ class ForenImage(Tk):
         """
         self.init_main()
         self.init_tabs()
-        self.config(menu=self.menu)
     def init_main(self):
         """
         Initializes the main elements within the window
         """
         self.image_label = Canvas(self, width=300, height=300)
         self.image_label.pack()
-        self.left_frame = ttk.Frame()
+        self.left_frame = Frame()
         self.left_frame.pack()
-        self.files_box = self.init_files_box(self.left_frame)
         #upload label initialization
         upload_label = Label(self, textvariable=self.filepath)
         upload_label.pack()
@@ -45,18 +54,12 @@ class ForenImage(Tk):
         upload_label.pack()
         #error label init
         error_label = Label(self, textvariable=self.path_error)
-        #generate copy move
-        self.init_copy_move()
         #batch upload 
-        batch_upload_button = Button(style="Access.TButton",text="Batch Upload", command=self.action_batch_upload_button)
+        batch_upload_button = Button(text="Batch Upload", command=self.action_batch_upload_button)
         batch_upload_button.pack()
-        #tooltip for batch upload
-        ToolTip(batch_upload_button, msg="You can upload multiple files of .bmp, .png and .jpg format here.")
-        upload_button = ttk.Button(style="Access.TButton",text="Browse", command=self.action_upload_button)
+        upload_button = Button(text="Browse", command=self.action_upload_button)
         upload_button.pack()
         error_label.pack()
-        #tool tip for single upload
-        ToolTip(upload_button, msg="You can upload a single file of .bmp, .png and .jpg format here.")
 
 
     
@@ -66,16 +69,91 @@ class ForenImage(Tk):
 
         """
         tabsControl = Notebook(self, width=500, height=300)
-        tabsControl.add(self.init_steg_tab(), text="Steganography")
         tabsControl.add(self.init_metadata_tab(), text="Metadata")
-        tabsControl.add(self.init_ela_tab(), text="Analysis")
-        tabsControl.add(self.init_strings_tab(), text="String Data")
-        tabsControl.add(self.init_hex_tab(), text="Hex Data")
-        tabsControl.add(self.init_edges_tab(), text="Edges Detection")
-        tabsControl.add(self.init_location_tab(tabsControl), text="Location")
-        tabsControl.add(self.init_digest_tab(), text="Digest")
         tabsControl.pack()
         return tabsControl
+    
+    def init_metadata_tab(self):
+        """ 
+        Initializes the metadata tab
+        """
+        metadata_tab = Frame()
+        self.metadata_listbox = Listbox(metadata_tab, height=300, width=300)
+        self.metadata_listbox.pack()
+        return metadata_tab
+    
+ 
+    
+    def process_metadata(self,listbox):
+        """ 
+        Processes metadata 
+        :listbox - listbox reference to input data into
+        """
+        listbox.delete(0, END)
+        with ExifToolHelper() as et:
+            for d in et.get_metadata(self.filepath.get()):
+                for i in range(len(list(d.items()))):
+                    listbox.insert(i, list(d.items())[i])
+   
+    def action_upload_button(self): 
+        """ 
+        Parses a single file to be used within the forensics tool
+        :filepath - filepath to open
+        """
+        filename = filedialog.askopenfile()
+        if self.validate_image(filename.name):
+            self.path_error.set("")
+            self.filepath.set(filename.name)
+            self.show_image(Image.open(filename.name), self.image_label)
+            self.process_metadata(self.metadata_listbox)
+        else:
+            self.path_error.set("Please input a png, bmp, or jpg file")
+   
+    def show_image(self, imagefile, label):
+        """
+            Shows an image
+        """
+        self.image = ImageTk.PhotoImage(imagefile.resize((300,300), Image.Resampling.NEAREST))
+        label.create_image(0,0, image=self.image, anchor=NW, tags="IMG")
+        label.image = self.image
+    
+    def action_batch_upload_button(self):
+        """ 
+        Parses multiple files to be used within the forensics tool
+        """
+        files = filedialog.askopenfilenames(title="Choose a file")
+        if self.validate_files(files) == False:
+            self.path_error.set("Some files are not of either .jpg, .png, or .bmp. Please upload one of the prior formats.")
+        else:
+            for i in range(len(files)):
+                self.files_box.insert(i, files[i])
+            self.left_frame.pack(side="left")
+            self.files_box.bind("<<ListboxSelect>>", self.on_filesbox_select)
+            self.files_box.pack(side=LEFT)
+    def on_filesbox_select(self,event):
+        """
+            Runs processing when a filepath in the listbox is selected
+            Args:
+            :event - on selecting the listbox
+        """
+        selection = event.widget.curselection()
+        if selection:
+            name = event.widget.get(selection[0])
+            self.filepath.set(name)
+            self.show_image(Image.open(name), self.image_label)
+            self.process_metadata(self.metadata_listbox)
+            
+    def validate_image(self, name):
+        """
+            Validates a file to ensure it is of the 3 image formats covered in this tool
+        """
+        new_name = name.split("/")[-1].lower().split('.')[1]
+        if((new_name != "jpg") and (new_name != "png") and (new_name != "bmp")):
+            return False
+        return True
+    
+    
+    
     
 app = ForenImage()
 app.mainloop()
