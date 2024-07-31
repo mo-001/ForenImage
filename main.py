@@ -70,6 +70,8 @@ class ForenImage(Tk):
         """
         tabsControl = Notebook(self, width=500, height=300)
         tabsControl.add(self.init_metadata_tab(), text="Metadata")
+        tabsControl.add(self.init_ela_tab(), text="Analysis")
+
         tabsControl.pack()
         return tabsControl
     
@@ -82,7 +84,14 @@ class ForenImage(Tk):
         self.metadata_listbox.pack()
         return metadata_tab
     
- 
+    def init_ela_tab(self):
+            """ 
+            Initializes the ELA tab
+            """
+            ela_tab = ttk.Frame()
+            self.ela_label = Canvas(ela_tab, width=300, height=300)
+            self.ela_label.pack()
+            return ela_tab
     
     def process_metadata(self,listbox):
         """ 
@@ -94,6 +103,38 @@ class ForenImage(Tk):
             for d in et.get_metadata(self.filepath.get()):
                 for i in range(len(list(d.items()))):
                     listbox.insert(i, list(d.items())[i])
+    def process_ela(self,filepath):
+        """ 
+        Processes image to produce ELA image
+        :filepath - filepath to open
+        """
+        image = Image.open(filepath)
+        temp_path = "temp_ela.jpg"
+        image.save(temp_path, "JPEG", quality=quality)
+        compressed_image = Image.open(temp_path)
+
+        ela_image = ImageChops.difference(image, compressed_image)
+        extrema = ela_image.getextrema()
+        max_diff = max([ex[1] for ex in extrema])
+        scale = 255.0/max_diff
+        ela_image = ImageEnhance.Brightness(ela_image).enhance(scale)
+        return ela_image
+    
+    def calculate_ela(self,  quality=90):
+        """ 
+            Calculates ELA of image
+        """
+        image = Image.open(self.filepath.get())
+        temp_path = "temp_ela.jpg"
+        image.save(temp_path, "JPEG", quality=quality)
+        compressed_image = Image.open(temp_path)
+
+        ela_image = ImageChops.difference(image, compressed_image)
+        extrema = ela_image.getextrema()
+        max_diff = max([ex[1] for ex in extrema])
+        scale = 255.0/max_diff
+        ela_image = ImageEnhance.Brightness(ela_image).enhance(scale)
+        return ela_image
    
     def action_upload_button(self): 
         """ 
@@ -106,6 +147,8 @@ class ForenImage(Tk):
             self.filepath.set(filename.name)
             self.show_image(Image.open(filename.name), self.image_label)
             self.process_metadata(self.metadata_listbox)
+            self.show_image(self.calculate_ela(), self.ela_label)
+
         else:
             self.path_error.set("Please input a png, bmp, or jpg file")
    

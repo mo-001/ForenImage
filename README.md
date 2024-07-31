@@ -4,5 +4,6 @@ Tool for Master's Dissertation 2024
 - tkinter
 - ttk
 - PIL
+- EXIFTool
 ## Documentation
 To be added
