@@ -71,7 +71,7 @@ class ForenImage(Tk):
         tabsControl = Notebook(self, width=500, height=300)
         tabsControl.add(self.init_metadata_tab(), text="Metadata")
         tabsControl.add(self.init_ela_tab(), text="Analysis")
-
+        tabsControl.add(self.init_edges_tab(), text="Edges Detection")
         tabsControl.pack()
         return tabsControl
     
@@ -79,7 +79,7 @@ class ForenImage(Tk):
         """ 
         Initializes the metadata tab
         """
-        metadata_tab = Frame()
+        metadata_tab = ttk.Frame()
         self.metadata_listbox = Listbox(metadata_tab, height=300, width=300)
         self.metadata_listbox.pack()
         return metadata_tab
@@ -92,7 +92,14 @@ class ForenImage(Tk):
             self.ela_label = Canvas(ela_tab, width=300, height=300)
             self.ela_label.pack()
             return ela_tab
-    
+    def init_edges_tab(self):
+        """ 
+        Initializes the edge detection tab
+        """
+        edges_tab= ttk.Frame()
+        self.edge_label = Canvas(edges_tab, width=300, height=300)
+        self.edge_label.pack()
+        return edges_tab
     def process_metadata(self,listbox):
         """ 
         Processes metadata 
@@ -135,7 +142,15 @@ class ForenImage(Tk):
         scale = 255.0/max_diff
         ela_image = ImageEnhance.Brightness(ela_image).enhance(scale)
         return ela_image
-   
+    def detect_edges(self):
+        """
+            Detects edges 
+            Returns:
+            :edge_image - edge image 
+        """
+        image = Image.open(self.filepath.get())
+        edge_image = image.filter(ImageFilter.FIND_EDGES)
+        return edge_image
     def action_upload_button(self): 
         """ 
         Parses a single file to be used within the forensics tool
@@ -147,7 +162,10 @@ class ForenImage(Tk):
             self.filepath.set(filename.name)
             self.show_image(Image.open(filename.name), self.image_label)
             self.process_metadata(self.metadata_listbox)
-            self.show_image(self.calculate_ela(), self.ela_label)
+            if self.is_jpg(filename.name):
+                self.show_image(self.calculate_ela(), self.ela_label)
+                self.show_image(self.detect_edges(), self.edge_label)
+
 
         else:
             self.path_error.set("Please input a png, bmp, or jpg file")
@@ -194,6 +212,13 @@ class ForenImage(Tk):
         if((new_name != "jpg") and (new_name != "png") and (new_name != "bmp")):
             return False
         return True
+    def is_jpg(self, filename):
+        extension = filename.split("/")[-1].lower().split('.')[1]
+        if(extension != "jpg"):
+            return False
+        return True
+
+    
     
     
     
