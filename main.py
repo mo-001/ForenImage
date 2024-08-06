@@ -10,8 +10,12 @@ from tkinter import filedialog
 from tkinter import simpledialog
 from tkinter import filedialog as tkFileDialog
 from tkinter import simpledialog as tkSimpleDialog
+import tkintermapview
 from PIL import ImageTk, Image, ImageChops, ImageEnhance, ImageFilter
 from exiftool import ExifToolHelper
+import re
+import binascii
+import numpy
 
 class ForenImage(Tk):
     """
@@ -26,6 +30,7 @@ class ForenImage(Tk):
         self.filepath = StringVar()
         self.filepaths = StringVar()
         self.path_error = StringVar()
+        self.location = StringVar()
         self.image = None
         self.init_root()
     
@@ -72,6 +77,10 @@ class ForenImage(Tk):
         tabsControl.add(self.init_metadata_tab(), text="Metadata")
         tabsControl.add(self.init_ela_tab(), text="Analysis")
         tabsControl.add(self.init_edges_tab(), text="Edges Detection")
+        tabsControl.add(self.init_strings_tab(), text="String Data")
+        tabsControl.add(self.init_hex_tab(), text="Hex Data")
+        tabsControl.add(self.init_location_tab(tabsControl), text="Location")
+
         tabsControl.pack()
         return tabsControl
     
@@ -100,6 +109,38 @@ class ForenImage(Tk):
         self.edge_label = Canvas(edges_tab, width=300, height=300)
         self.edge_label.pack()
         return edges_tab
+    def init_strings_tab(self):
+        """ 
+        Initializes the string extraction tab
+        """
+        string_tab = ttk.Frame()
+        string_tab.pack()
+        string_frame = Frame(string_tab)
+        string_frame.pack()
+        self.string_label = Text(string_tab, width=150)
+        self.string_label.pack()
+        save_strings = Button(string_frame, text="Save", command=self.action_save_strings)
+        save_strings.pack()
+        return string_tab
+    
+    def init_hex_tab(self):
+        """ 
+        Initializes the hex viewer tab
+        """
+        hex_tab = ttk.Frame()
+        hex_frame = Frame(hex_tab, width=100, height=100)
+        hex_frame.pack()
+        self.hex_label = Text(hex_tab,  width=100, height=100)
+        self.hex_label.pack()
+        save_hex = Button(hex_frame,text="Save", command=self.action_save_hex)
+        save_hex.pack()
+        return hex_tab
+    def init_location_tab(self, tabsControl):
+        """ 
+        Initializes the location tab
+        """
+        self.location_tab = tkintermapview.TkinterMapView(tabsControl)
+        return self.location_tab
     def process_metadata(self,listbox):
         """ 
         Processes metadata 
@@ -110,6 +151,9 @@ class ForenImage(Tk):
             for d in et.get_metadata(self.filepath.get()):
                 for i in range(len(list(d.items()))):
                     listbox.insert(i, list(d.items())[i])
+            location_data = et.get_tags(self.filepath.get(), ["EXIF:GPSLatitude","EXIF:GPSLongitude"])
+            self.location.set(str(location_data[0].get("EXIF:GPSLatitude")) + "," + str(location_data[0].get("EXIF:GPSLongitude")))
+   
     def process_ela(self,filepath):
         """ 
         Processes image to produce ELA image
@@ -151,6 +195,55 @@ class ForenImage(Tk):
         image = Image.open(self.filepath.get())
         edge_image = image.filter(ImageFilter.FIND_EDGES)
         return edge_image
+    def process_strings(self,filepath):
+        """ 
+            Processes image to extract strings 
+            :filepath - filepath to open
+        """
+        self.string_label.delete('1.0', END)
+        strings_str = ""
+        if self.filepath:
+            with open(self.filepath.get(), 'rb') as image:
+                data = image.read()
+                strings = re.findall(b'[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};\'"\\|,.<>\/? ]{4,}', data)
+                strings = [s.decode('utf-8', 'ignore') for s in strings]
+                strings_str = "\n".join(strings)
+        self.string_label.insert(END, strings_str)
+        return strings_str
+    
+    def process_hex(self,filepath):
+        """ 
+        Processes image to produce hexadecimal conversion
+        :filepath - filepath to open
+        """
+        hex_data = ""
+        if self.filepath.get():
+            with open(self.filepath.get(), 'rb') as image:
+                data = image.read(1024)  # Read the first 1024 bytes for demonstration
+                hex_data = binascii.hexlify(data).decode('utf-8')
+                hex_str = ' '.join(hex_data[i:i+2] for i in range(0, len(hex_data), 2))
+        self.hex_label.insert(END, hex_str)
+        return hex_data
+    def locate_coords(self):
+        """
+            Locates and returns the GPS coordinates via EXIFTool
+            If not, returns a default location
+        """
+        with ExifToolHelper() as et:
+            location_data = et.get_tags(self.filepath.get(), ["EXIF:GPSLatitude","EXIF:GPSLongitude"])
+            location = str(location_data[0].get("EXIF:GPSLatitude")) + "," + str(location_data[0].get("EXIF:GPSLongitude"))
+            try:
+                lat, long = location.split(",")[0], location.split(",")[1]
+                return float(long), float(lat)
+            except:
+                return 1.0,1.0
+
+    def create_map(self, lat, long):
+        """
+            Creates the map widget given co-ordinates
+        """
+        self.location_tab.set_position(float(long), float(lat))
+
     def action_upload_button(self): 
         """ 
         Parses a single file to be used within the forensics tool
@@ -165,6 +258,10 @@ class ForenImage(Tk):
             if self.is_jpg(filename.name):
                 self.show_image(self.calculate_ela(), self.ela_label)
                 self.show_image(self.detect_edges(), self.edge_label)
+            self.process_strings(self.filepath.get())
+            self.process_hex(self.filepath.get())
+            lat, long = self.locate_coords()
+            self.create_map(lat, long)
 
 
         else:
@@ -191,6 +288,28 @@ class ForenImage(Tk):
             self.left_frame.pack(side="left")
             self.files_box.bind("<<ListboxSelect>>", self.on_filesbox_select)
             self.files_box.pack(side=LEFT)
+      
+    def action_save_hex(self, filepath):
+        """ 
+            Saves altered hex data
+            :filepath - filepath to open
+        """
+        file_clean = self.filepath.get().split(".")
+        with open(file_clean, 'w') as file:
+            content = self.hex_label.get("1.0", END)
+            file.write(content)
+
+    
+    def action_save_strings(self, filepath):
+        """ 
+        Saves altered string data of image
+        :filepath - filepath to open
+        """
+        with open(self.filepath.get(), 'w') as file:
+            content = self.string_label.get("1.0", END)
+            file.write(content)
+
+    
     def on_filesbox_select(self,event):
         """
             Runs processing when a filepath in the listbox is selected
