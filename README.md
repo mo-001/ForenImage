@@ -9,5 +9,6 @@ Tool for Master's Dissertation 2024
 - BinAscii
 - Numpy
 - TkinterMapView
+- Hashlib
 ## Documentation
 To be added

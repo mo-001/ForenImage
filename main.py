@@ -16,6 +16,7 @@ from exiftool import ExifToolHelper
 import re
 import binascii
 import numpy
+import hashlib
 
 class ForenImage(Tk):
     """
@@ -31,6 +32,10 @@ class ForenImage(Tk):
         self.filepaths = StringVar()
         self.path_error = StringVar()
         self.location = StringVar()
+        self.md5_text = StringVar()
+        self.md5_text.set("MD5 Hash Digest: ")
+        self.sha1_text = StringVar()
+        self.sha1_text.set("SHA1 Hash Digest: ")
         self.image = None
         self.init_root()
     
@@ -80,7 +85,7 @@ class ForenImage(Tk):
         tabsControl.add(self.init_strings_tab(), text="String Data")
         tabsControl.add(self.init_hex_tab(), text="Hex Data")
         tabsControl.add(self.init_location_tab(tabsControl), text="Location")
-
+        tabsControl.add(self.init_digest_tab(), text="Digest")
         tabsControl.pack()
         return tabsControl
     
@@ -141,6 +146,20 @@ class ForenImage(Tk):
         """
         self.location_tab = tkintermapview.TkinterMapView(tabsControl)
         return self.location_tab
+    
+    def init_digest_tab(self):
+        """ 
+        Initializes the digest tab
+        """
+        digest_tab = ttk.Frame()
+        self.md5_text = StringVar()
+        self.sha1_text = StringVar()
+        md5_label = Label(digest_tab, textvariable=self.md5_text)
+        sha1_label = Label(digest_tab, textvariable=self.sha1_text)
+        md5_label.pack()
+        sha1_label.pack()
+        return digest_tab
+
     def process_metadata(self,listbox):
         """ 
         Processes metadata 
@@ -243,6 +262,18 @@ class ForenImage(Tk):
             Creates the map widget given co-ordinates
         """
         self.location_tab.set_position(float(long), float(lat))
+    
+    def hash_file(self, filepath):
+        """ 
+        Processes image to produce a hash with MD5 and SHA1
+        :filepath - filepath to open
+        """
+        BUFF_SIZE = 65536
+        with open(filepath, 'rb') as file:
+            md5 = hashlib.md5(file.read())
+            sha1 = hashlib.sha1(file.read())
+            return md5, sha1
+   
 
     def action_upload_button(self): 
         """ 
@@ -260,8 +291,14 @@ class ForenImage(Tk):
                 self.show_image(self.detect_edges(), self.edge_label)
             self.process_strings(self.filepath.get())
             self.process_hex(self.filepath.get())
+            
             lat, long = self.locate_coords()
             self.create_map(lat, long)
+
+            md5_value, sha1_value = self.hash_file(filename.name)
+            self.md5_text.set("MD5 Hash: {0}".format(md5_value.hexdigest()))
+            self.sha1_text.set("SHA1 Hash: {0}".format(sha1_value.hexdigest()))
+            
 
 
         else:
