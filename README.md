@@ -12,3 +12,6 @@ Tool for Master's Dissertation 2024
 - Hashlib
 ## Documentation
 To be added
+
+## Acknowledgements
+Thank you to Baldanos - creator of Stegpy

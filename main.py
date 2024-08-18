@@ -17,6 +17,9 @@ import re
 import binascii
 import numpy
 import hashlib
+import sys
+import os
+from viewer import Viewer
 
 class ForenImage(Tk):
     """
@@ -86,6 +89,7 @@ class ForenImage(Tk):
         tabsControl.add(self.init_hex_tab(), text="Hex Data")
         tabsControl.add(self.init_location_tab(tabsControl), text="Location")
         tabsControl.add(self.init_digest_tab(), text="Digest")
+        tabsControl.add(self.init_steg_tab(), text="Steganography")
         tabsControl.pack()
         return tabsControl
     
@@ -159,6 +163,13 @@ class ForenImage(Tk):
         md5_label.pack()
         sha1_label.pack()
         return digest_tab
+    def init_steg_tab(self):
+        """ 
+        Initializes the steganography tab
+        """
+        self.viewer = Viewer(self)
+        self.steg_tab = self.viewer
+        return self.steg_tab
 
     def process_metadata(self,listbox):
         """ 
@@ -273,6 +284,21 @@ class ForenImage(Tk):
             md5 = hashlib.md5(file.read())
             sha1 = hashlib.sha1(file.read())
             return md5, sha1
+    
+    def detect_steganography(self):
+        """ 
+        Processes image to detect steganography
+        :filepath - filepath to open
+        """
+        orig = Image.open(self.filepath.get())
+        thumb = orig.copy()
+        print(self.viewer.image)
+        if not self.viewer.image:
+            self.steg_tab.run(self.filepath.get())
+            print(self.viewer.image)
+        else:
+            self.viewer.pack_forget()
+            self.steg_tab.run(self.filepath.get())
    
 
     def action_upload_button(self): 
@@ -298,6 +324,8 @@ class ForenImage(Tk):
             md5_value, sha1_value = self.hash_file(filename.name)
             self.md5_text.set("MD5 Hash: {0}".format(md5_value.hexdigest()))
             self.sha1_text.set("SHA1 Hash: {0}".format(sha1_value.hexdigest()))
+
+            self.detect_steganography()
             
 
 
@@ -377,7 +405,21 @@ class ForenImage(Tk):
     
     
     
-    
-    
+viewPlugins = []
+plugins = []
+commandPlugins = []
+def loadPlugins():
+    sys.path.insert(0,'plugins/')
+    plugs = []
+    for filename in os.listdir('plugins/'):
+        name, ext = os.path.splitext(filename)
+        if ext.endswith(".py"):
+            plugs.append(__import__(name))
+    for plug in plugs:
+        plugin = plug.register()
+        plugin.mode = "visual"
+        viewPlugins.append(plugin)
+        plugins.append(plugin)
+loadPlugins()
 app = ForenImage()
 app.mainloop()
