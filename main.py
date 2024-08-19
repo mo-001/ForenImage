@@ -20,6 +20,7 @@ import hashlib
 import sys
 import os
 from viewer import Viewer
+from help_guide import ForenImageHelpGuide
 
 class ForenImage(Tk):
     """
@@ -50,8 +51,11 @@ class ForenImage(Tk):
         """
         Initializes the top level window and subsequent tabs
         """
+        self.menu = self.init_menu()
         self.init_main()
         self.init_tabs()
+        self.config(menu=self.menu)
+
     def init_main(self):
         """
         Initializes the main elements within the window
@@ -74,7 +78,15 @@ class ForenImage(Tk):
         upload_button.pack()
         error_label.pack()
 
-
+    def init_menu(self):
+        """
+        Initializes the menu
+        """
+        menu_bar = Menu(self)
+        help_menu = Menu(menu_bar, tearoff=0)
+        help_menu.add_command(label="Help", command=self.show_help)
+        menu_bar.add_cascade(label="Help", menu=help_menu)
+        return menu_bar
     
     def init_tabs(self):
         """
@@ -339,7 +351,12 @@ class ForenImage(Tk):
         self.image = ImageTk.PhotoImage(imagefile.resize((300,300), Image.Resampling.NEAREST))
         label.create_image(0,0, image=self.image, anchor=NW, tags="IMG")
         label.image = self.image
-    
+    def show_help(self):
+        """
+        Initializes the help window
+        """
+        app = ForenImageHelpGuide()
+        app.mainloop()
     def action_batch_upload_button(self):
         """ 
         Parses multiple files to be used within the forensics tool
