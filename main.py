@@ -10,6 +10,8 @@ from tkinter import filedialog
 from tkinter import simpledialog
 from tkinter import filedialog as tkFileDialog
 from tkinter import simpledialog as tkSimpleDialog
+from ttkbootstrap import Style
+from ttkbootstrap.scrolled import ScrolledFrame
 import tkintermapview
 from PIL import ImageTk, Image, ImageChops, ImageEnhance, ImageFilter
 from exiftool import ExifToolHelper
@@ -53,8 +55,18 @@ class ForenImage(Tk):
         """
         self.menu = self.init_menu()
         self.init_main()
+        self.init_style()
         self.init_tabs()
         self.config(menu=self.menu)
+    
+    def init_style(self):
+        """
+        Initializes the accessibility styles for buttons
+        """
+        self.style = Style(theme='darkly')
+        self = self.style.master
+        
+    
 
     def init_main(self):
         """
@@ -71,6 +83,8 @@ class ForenImage(Tk):
         upload_label.pack()
         #error label init
         error_label = Label(self, textvariable=self.path_error)
+        #copymove
+        self.init_copy_move()
         #batch upload 
         batch_upload_button = Button(text="Batch Upload", command=self.action_batch_upload_button)
         batch_upload_button.pack()
@@ -182,6 +196,14 @@ class ForenImage(Tk):
         self.viewer = Viewer(self)
         self.steg_tab = self.viewer
         return self.steg_tab
+    
+    def init_copy_move(self):
+        """ 
+        Initializes the copymove label
+        """
+        self.copy_move_text = StringVar()
+        copy_move_label = Label(self, textvariable=self.copy_move_text)
+        copy_move_label.pack()
 
     def process_metadata(self,listbox):
         """ 
@@ -311,6 +333,27 @@ class ForenImage(Tk):
         else:
             self.viewer.pack_forget()
             self.steg_tab.run(self.filepath.get())
+    
+    def process_copymove(self, filepath):
+        """ 
+        Processes image to detect copy move
+        :filepath - filepath to open
+        """
+        image = Image.open(filepath).convert('L')
+        image_data = numpy.array(image)
+        shift = False
+        for y_shift in range(1,30):
+            for x_shift in range(1, 30):
+                shift_data = numpy.roll(image_data, (y_shift, x_shift), axis=(0,1))
+                similarity = numpy.mean(image_data == shift_data)
+                if similarity > 0.95:
+                    shift = True
+                    break
+        if shift:
+            self.copy_move_text.set("Copy Move Detected")
+        else:
+            self.copy_move_text.set("Copy Move Not Detected")
+
    
 
     def action_upload_button(self): 
