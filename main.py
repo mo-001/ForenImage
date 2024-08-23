@@ -23,6 +23,8 @@ import sys
 import os
 from viewer import Viewer
 from help_guide import ForenImageHelpGuide
+from tktooltip import ToolTip
+
 
 class ForenImage(Tk):
     """
@@ -74,8 +76,9 @@ class ForenImage(Tk):
         """
         self.image_label = Canvas(self, width=300, height=300)
         self.image_label.pack()
-        self.left_frame = Frame()
+        self.left_frame = ttk.Frame()
         self.left_frame.pack()
+        self.files_box = self.init_files_box(self.left_frame)
         #upload label initialization
         upload_label = Label(self, textvariable=self.filepath)
         upload_label.pack()
@@ -83,14 +86,18 @@ class ForenImage(Tk):
         upload_label.pack()
         #error label init
         error_label = Label(self, textvariable=self.path_error)
-        #copymove
+        #generate copy move
         self.init_copy_move()
         #batch upload 
-        batch_upload_button = Button(text="Batch Upload", command=self.action_batch_upload_button)
+        batch_upload_button = Button(style="Access.TButton",text="Batch Upload", command=self.action_batch_upload_button)
         batch_upload_button.pack()
-        upload_button = Button(text="Browse", command=self.action_upload_button)
+        #tooltip for batch upload
+        ToolTip(batch_upload_button, msg="You can upload multiple files of .bmp, .png and .jpg format here.")
+        upload_button = ttk.Button(style="Access.TButton",text="Browse", command=self.action_upload_button)
         upload_button.pack()
         error_label.pack()
+        #tool tip for single upload
+        ToolTip(upload_button, msg="You can upload a single file of .bmp, .png and .jpg format here.")
 
     def init_menu(self):
         """
@@ -118,6 +125,12 @@ class ForenImage(Tk):
         tabsControl.add(self.init_steg_tab(), text="Steganography")
         tabsControl.pack()
         return tabsControl
+    def init_files_box(self, frame):
+        """ 
+        Initializes the files listbox
+        """
+        files_box = Listbox(frame, width=50, height=50)
+        return files_box
     
     def init_metadata_tab(self):
         """ 
@@ -408,11 +421,12 @@ class ForenImage(Tk):
         if self.validate_files(files) == False:
             self.path_error.set("Some files are not of either .jpg, .png, or .bmp. Please upload one of the prior formats.")
         else:
-            for i in range(len(files)):
-                self.files_box.insert(i, files[i])
-            self.left_frame.pack(side="left")
-            self.files_box.bind("<<ListboxSelect>>", self.on_filesbox_select)
-            self.files_box.pack(side=LEFT)
+            if(not len(files) == 0):
+                for i in range(len(files)):
+                    self.files_box.insert(i, files[i])
+                self.left_frame.pack(side="left")
+                self.files_box.bind("<<ListboxSelect>>", self.on_filesbox_select)
+                self.files_box.pack(side=LEFT)
       
     def action_save_hex(self, filepath):
         """ 
@@ -447,7 +461,28 @@ class ForenImage(Tk):
             self.filepath.set(name)
             self.show_image(Image.open(name), self.image_label)
             self.process_metadata(self.metadata_listbox)
-            
+            self.process_strings(self.filepath.get())
+            self.process_hex(self.filepath.get())
+            if self.is_jpg(name):
+                self.show_image(self.calculate_ela(), self.ela_label)
+                self.show_image(self.detect_edges(), self.edge_label)
+            # else:
+                #lock tabs
+            lat, long = self.locate_coords()
+            self.create_map(lat, long)
+            md5_value, sha1_value = self.hash_file(name)
+            self.md5_text.set("MD5 Hash: {0}".format(md5_value.hexdigest()))
+            self.sha1_text.set("SHA1 Hash: {0}".format(sha1_value.hexdigest()))
+            self.detect_steganography()
+    def validate_files(self, files):
+        """
+            Validates a list of files
+        """
+        for name in files:
+            if self.validate_image(name) == False:
+                return False
+                break
+        return True
     def validate_image(self, name):
         """
             Validates a file to ensure it is of the 3 image formats covered in this tool
