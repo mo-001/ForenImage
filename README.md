@@ -10,6 +10,7 @@ Tool for Master's Dissertation 2024
 - Numpy
 - TkinterMapView
 - Hashlib
+- CV2
 ## Documentation
 To be added
 

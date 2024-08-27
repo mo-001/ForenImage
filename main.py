@@ -24,6 +24,7 @@ import os
 from viewer import Viewer
 from help_guide import ForenImageHelpGuide
 from tktooltip import ToolTip
+import cv2
 
 
 class ForenImage(Tk):
@@ -123,6 +124,7 @@ class ForenImage(Tk):
         tabsControl.add(self.init_location_tab(tabsControl), text="Location")
         tabsControl.add(self.init_digest_tab(), text="Digest")
         tabsControl.add(self.init_steg_tab(), text="Steganography")
+        tabsControl.add(self.init_image_tab(), text="Image Manipulation")
         tabsControl.pack()
         return tabsControl
     def init_files_box(self, frame):
@@ -217,6 +219,24 @@ class ForenImage(Tk):
         self.copy_move_text = StringVar()
         copy_move_label = Label(self, textvariable=self.copy_move_text)
         copy_move_label.pack()
+    
+    def init_image_tab(self):
+        """
+          Initializes image tab
+        """
+        image_frame = ScrolledFrame()
+        self.luminence_label = Label(image_frame, text="Luminence Gradient: ")
+        self.luminence_label.pack()
+        self.equalizer_label = Label(image_frame)
+        self.equalizer_label.pack()
+        self.sharpen_image_label = Label(image_frame)
+        self.sharpen_image_label.pack()
+        self.blur_image_label = Label(image_frame)
+        self.blur_image_label.pack()
+        
+        return image_frame.container
+
+    
 
     def process_metadata(self,listbox):
         """ 
@@ -367,7 +387,106 @@ class ForenImage(Tk):
         else:
             self.copy_move_text.set("Copy Move Not Detected")
 
-   
+    def process_image_manip(self):
+        """
+            Processes image manipulation
+        """
+        self.luminence_label.config(text=self.compute_luminance(self.filepath.get()))
+        equimage = ImageTk.PhotoImage(Image.fromarray(self.equalize_image(self.filepath.get())))
+        self.equalizer_label.config(image=equimage)
+        self.equalizer_label.image = equimage
+        sharpimage = ImageTk.PhotoImage(Image.fromarray(self.sharpen_image(self.filepath.get())))
+        self.sharpen_image_label.config(image=sharpimage)
+        self.sharpen_image_label.image = sharpimage
+        blurimage = ImageTk.PhotoImage(Image.fromarray(self.blur_image(self.filepath.get())))
+        self.blur_image_label.config(image=blurimage)
+        self.blur_image_label.image = blurimage 
+    def blur_image(self, image_path, kernel_size=5):
+        """
+        Applies Gaussian blur to an image to reduce noise.
+
+        Args:
+        - image_path: str, path to the input image file
+        - kernel_size: int, size of the Gaussian kernel
+
+        Returns:
+        - blurred_image: 2D numpy array representing the blurred image
+        """
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError("Image not found or unable to load.")
+        # Apply Gaussian blur
+        blurred_image = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
+        return blurred_image
+    
+    def sharpen_image(self, image_path):
+        """
+        Sharpens an image to enhance its details.
+
+        Args:
+        - filename: str, path to the input image file
+
+        Returns:
+        - sharpened_image: 2D numpy array representing the sharpened image
+        """
+        # Load image
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError("Image not found or unable to load.")
+        
+        # Define sharpening kernel
+        kernel = numpy.array([[0, -1, 0],
+                        [-1, 5, -1],
+                        [0, -1, 0]])
+        
+        # Apply the kernel to the image
+        sharpened_image = cv2.filter2D(image, -1, kernel)
+        
+        return sharpened_image
+        
+    def compute_luminance(self, image_path):
+        """
+        Computes the luminance gradient of an image using Sobel filters.
+
+        Args:
+        - image_path: str, path to the input image file
+
+        Returns:
+        - gradient_magnitude: 2D numpy array representing the gradient magnitude
+        """
+        # Load image in grayscale
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        if image is None:
+            raise ValueError("Image not found or unable to load.")
+        # Compute Sobel gradients
+        sobel_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
+        sobel_y = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
+        # Compute gradient magnitude
+        gradient_magnitude = numpy.sqrt(sobel_x**2 + sobel_y**2)
+        # Normalize gradient magnitude for better visualization
+        gradient_magnitude = (gradient_magnitude / gradient_magnitude.max()) * 255
+        return gradient_magnitude.astype(numpy.uint8)
+        
+    def equalize_image(self, image_path):
+        """
+        Applies histogram equalization to improve the contrast of a grayscale image.
+
+        Args:
+        - image_path: str, path to the input image file
+
+        Returns:
+        - equalized_image: 2D numpy array representing the equalized image
+        """
+        # Load image in grayscale
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        
+        if image is None:
+            raise ValueError("Image not found or unable to load.")
+        
+        # Apply histogram equalization
+        equalized_image = cv2.equalizeHist(image)
+        
+        return equalized_image
 
     def action_upload_button(self): 
         """ 
@@ -394,7 +513,9 @@ class ForenImage(Tk):
             self.sha1_text.set("SHA1 Hash: {0}".format(sha1_value.hexdigest()))
 
             self.detect_steganography()
-            
+            # self.process_copymove()
+            self.process_image_manip()
+
 
 
         else:
@@ -433,8 +554,7 @@ class ForenImage(Tk):
             Saves altered hex data
             :filepath - filepath to open
         """
-        file_clean = self.filepath.get().split(".")
-        with open(file_clean, 'w') as file:
+        with open("temp_{}".format(self.filepath.get()), 'w') as file:
             content = self.hex_label.get("1.0", END)
             file.write(content)
 
@@ -444,7 +564,7 @@ class ForenImage(Tk):
         Saves altered string data of image
         :filepath - filepath to open
         """
-        with open(self.filepath.get(), 'w') as file:
+        with open("temp_{}".format(self.filepath.get()), 'w') as file:
             content = self.string_label.get("1.0", END)
             file.write(content)
 
@@ -474,6 +594,9 @@ class ForenImage(Tk):
             self.md5_text.set("MD5 Hash: {0}".format(md5_value.hexdigest()))
             self.sha1_text.set("SHA1 Hash: {0}".format(sha1_value.hexdigest()))
             self.detect_steganography()
+            # self.process_copymove()
+            self.process_image_manip()
+
     def validate_files(self, files):
         """
             Validates a list of files
