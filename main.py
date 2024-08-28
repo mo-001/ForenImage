@@ -26,7 +26,7 @@ from help_guide import ForenImageHelpGuide
 from tktooltip import ToolTip
 import cv2
 
-
+#APP
 class ForenImage(Tk):
     """
     This class is used for generating the image forensic tool, by inheriting the Tk/window object from Tkinter. This is done so that it is easier to build new objects 
@@ -233,7 +233,6 @@ class ForenImage(Tk):
         self.sharpen_image_label.pack()
         self.blur_image_label = Label(image_frame)
         self.blur_image_label.pack()
-        
         return image_frame.container
 
     
@@ -243,40 +242,27 @@ class ForenImage(Tk):
         Processes metadata 
         :listbox - listbox reference to input data into
         """
+        #wipe listbox so we don't get extra data
         listbox.delete(0, END)
         with ExifToolHelper() as et:
+            #get metadata
             for d in et.get_metadata(self.filepath.get()):
                 for i in range(len(list(d.items()))):
+                    #insert metadata
                     listbox.insert(i, list(d.items())[i])
-            location_data = et.get_tags(self.filepath.get(), ["EXIF:GPSLatitude","EXIF:GPSLongitude"])
-            self.location.set(str(location_data[0].get("EXIF:GPSLatitude")) + "," + str(location_data[0].get("EXIF:GPSLongitude")))
    
-    def process_ela(self,filepath):
-        """ 
-        Processes image to produce ELA image
-        :filepath - filepath to open
-        """
-        image = Image.open(filepath)
-        temp_path = "temp_ela.jpg"
-        image.save(temp_path, "JPEG", quality=quality)
-        compressed_image = Image.open(temp_path)
-
-        ela_image = ImageChops.difference(image, compressed_image)
-        extrema = ela_image.getextrema()
-        max_diff = max([ex[1] for ex in extrema])
-        scale = 255.0/max_diff
-        ela_image = ImageEnhance.Brightness(ela_image).enhance(scale)
-        return ela_image
     
     def calculate_ela(self,  quality=90):
         """ 
             Calculates ELA of image
         """
+        #get image
         image = Image.open(self.filepath.get())
+        #temp save so that it doesn't affect original and compress
         temp_path = "temp_ela.jpg"
         image.save(temp_path, "JPEG", quality=quality)
         compressed_image = Image.open(temp_path)
-
+        #get difference
         ela_image = ImageChops.difference(image, compressed_image)
         extrema = ela_image.getextrema()
         max_diff = max([ex[1] for ex in extrema])
@@ -290,6 +276,7 @@ class ForenImage(Tk):
             :edge_image - edge image 
         """
         image = Image.open(self.filepath.get())
+        #use filter to create edges
         edge_image = image.filter(ImageFilter.FIND_EDGES)
         return edge_image
     def process_strings(self,filepath):
@@ -315,10 +302,12 @@ class ForenImage(Tk):
         """
         hex_data = ""
         if self.filepath.get():
+            #read hex data
             with open(self.filepath.get(), 'rb') as image:
                 data = image.read(1024)  # Read the first 1024 bytes for demonstration
                 hex_data = binascii.hexlify(data).decode('utf-8')
                 hex_str = ' '.join(hex_data[i:i+2] for i in range(0, len(hex_data), 2))
+        #put into widget
         self.hex_label.insert(END, hex_str)
         return hex_data
     def locate_coords(self):
@@ -326,12 +315,16 @@ class ForenImage(Tk):
             Locates and returns the GPS coordinates via EXIFTool
             If not, returns a default location
         """
+        #use exiftool to extract
         with ExifToolHelper() as et:
+            #get location via exif
             location_data = et.get_tags(self.filepath.get(), ["EXIF:GPSLatitude","EXIF:GPSLongitude"])
             location = str(location_data[0].get("EXIF:GPSLatitude")) + "," + str(location_data[0].get("EXIF:GPSLongitude"))
+            #try to split - ensures that no faliure state
             try:
                 lat, long = location.split(",")[0], location.split(",")[1]
                 return float(long), float(lat)
+            #otherwise return a default location
             except:
                 return 1.0,1.0
 
@@ -339,6 +332,7 @@ class ForenImage(Tk):
         """
             Creates the map widget given co-ordinates
         """
+        #create the map at the location tab
         self.location_tab.set_position(float(long), float(lat))
     
     def hash_file(self, filepath):
@@ -357,12 +351,11 @@ class ForenImage(Tk):
         Processes image to detect steganography
         :filepath - filepath to open
         """
-        orig = Image.open(self.filepath.get())
-        thumb = orig.copy()
-        print(self.viewer.image)
+        #check for if image already exists
         if not self.viewer.image:
             self.steg_tab.run(self.filepath.get())
             print(self.viewer.image)
+        #else destroy current view
         else:
             self.viewer.pack_forget()
             self.steg_tab.run(self.filepath.get())
@@ -372,9 +365,11 @@ class ForenImage(Tk):
         Processes image to detect copy move
         :filepath - filepath to open
         """
+        #open image
         image = Image.open(filepath).convert('L')
         image_data = numpy.array(image)
         shift = False
+        #calculate shift in similarity
         for y_shift in range(1,30):
             for x_shift in range(1, 30):
                 shift_data = numpy.roll(image_data, (y_shift, x_shift), axis=(0,1))
@@ -423,11 +418,9 @@ class ForenImage(Tk):
         """
         Sharpens an image to enhance its details.
 
-        Args:
-        - filename: str, path to the input image file
+        :filename: str, path to the input image file
 
-        Returns:
-        - sharpened_image: 2D numpy array representing the sharpened image
+        -sharpened_image: 2D numpy array representing the sharpened image
         """
         # Load image
         image = cv2.imread(image_path)
@@ -448,11 +441,9 @@ class ForenImage(Tk):
         """
         Computes the luminance gradient of an image using Sobel filters.
 
-        Args:
-        - image_path: str, path to the input image file
+        :image_path: str, path to the input image file
 
-        Returns:
-        - gradient_magnitude: 2D numpy array representing the gradient magnitude
+        -gradient_magnitude: 2D numpy array representing the gradient magnitude
         """
         # Load image in grayscale
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -471,11 +462,10 @@ class ForenImage(Tk):
         """
         Applies histogram equalization to improve the contrast of a grayscale image.
 
-        Args:
-        - image_path: str, path to the input image file
+        :image_path: str, path to the input image file
 
-        Returns:
-        - equalized_image: 2D numpy array representing the equalized image
+        
+        -equalized_image: 2D numpy array representing the equalized image
         """
         # Load image in grayscale
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
