@@ -1,3 +1,15 @@
+
+
+
+from PIL import ImageTk, Image, ImageChops, ImageEnhance, ImageFilter
+from exiftool import ExifToolHelper
+import re
+import binascii
+import numpy
+import hashlib
+import sys
+import os
+import cv2
 def process_metadata(filepath):
     """ 
     Processes metadata 
@@ -11,7 +23,8 @@ def process_ela(filepath):
     :filepath - filepath to open
     """
     image = Image.open(filepath)
-    compressed_image = Image.open(temp_path)
+    image.save("temp_jpg.jpg", "JPEG", quality=90)
+    compressed_image = Image.open("temp_jpg.jpg")
     ela_image = ImageChops.difference(image, compressed_image)
     extrema = ela_image.getextrema()
     max_diff = max([ex[1] for ex in extrema])
@@ -19,21 +32,7 @@ def process_ela(filepath):
     ela_image = ImageEnhance.Brightness(ela_image).enhance(scale)
     return ela_image
 
-def calculate_ela(selfquality=90):
-    """ 
-        Calculates ELA of image
-    """
-    image = Image.open(filepath)
-    temp_path = "temp_ela.jpg"
-    image.save(temp_path, "JPEG", quality=quality)
-    compressed_image = Image.open(temp_path)
 
-    ela_image = ImageChops.difference(image, compressed_image)
-    extrema = ela_image.getextrema()
-    max_diff = max([ex[1] for ex in extrema])
-    scale = 255.0/max_diff
-    ela_image = ImageEnhance.Brightness(ela_image).enhance(scale)
-    return ela_image
 def detect_edges(filepath):
     """
         Detects edges 
@@ -48,15 +47,13 @@ def process_strings(filepath):
         Processes image to extract strings 
         :filepath - filepath to open
     """
-    self.string_label.delete('1.0', END)
     strings_str = ""
-    if self.filepath:
+    if filepath:
         with open(filepath, 'rb') as image:
             data = image.read()
             strings = re.findall(b'[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};\'"\\|,.<>\/? ]{4,}', data)
             strings = [s.decode('utf-8', 'ignore') for s in strings]
             strings_str = "\n".join(strings)
-    self.string_label.insert(END, strings_str)
     return strings_str
 
 def process_hex(filepath):
@@ -70,7 +67,6 @@ def process_hex(filepath):
             data = image.read(1024)  # Read the first 1024 bytes for demonstration
             hex_data = binascii.hexlify(data).decode('utf-8')
             hex_str = ' '.join(hex_data[i:i+2] for i in range(0, len(hex_data), 2))
-    self.hex_label.insert(END, hex_str)
     return hex_data
 def locate_coords(filepath):
     """
@@ -113,10 +109,7 @@ def process_copymove(filepath):
             if similarity > 0.95:
                 shift = True
                 break
-    if shift:
-        self.copy_move_text.set("Copy Move Detected")
-    else:
-        self.copy_move_text.set("Copy Move Not Detected")
+    return shift
 
 def blur_image(image_path, kernel_size=5):
     """
