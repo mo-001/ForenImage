@@ -387,13 +387,13 @@ class ForenImage(Tk):
             Processes image manipulation
         """
         self.luminence_label.config(text=self.compute_luminance(self.filepath.get()))
-        equimage = ImageTk.PhotoImage(Image.fromarray(self.equalize_image(self.filepath.get())))
+        equimage = ImageTk.PhotoImage(Image.fromarray(self.equalize_image(self.filepath.get())).resize((300,300), Image.Resampling.NEAREST))
         self.equalizer_label.config(image=equimage)
         self.equalizer_label.image = equimage
-        sharpimage = ImageTk.PhotoImage(Image.fromarray(self.sharpen_image(self.filepath.get())))
+        sharpimage = ImageTk.PhotoImage(Image.fromarray(self.sharpen_image(self.filepath.get())).resize((300,300), Image.Resampling.NEAREST))
         self.sharpen_image_label.config(image=sharpimage)
         self.sharpen_image_label.image = sharpimage
-        blurimage = ImageTk.PhotoImage(Image.fromarray(self.blur_image(self.filepath.get())))
+        blurimage = ImageTk.PhotoImage(Image.fromarray(self.blur_image(self.filepath.get())).resize((300,300), Image.Resampling.NEAREST))
         self.blur_image_label.config(image=blurimage)
         self.blur_image_label.image = blurimage 
     def blur_image(self, image_path, kernel_size=5):

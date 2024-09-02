@@ -19,3 +19,4 @@ Tool for Master's Dissertation 2024
 
 ## Acknowledgements
 Thank you to Baldanos - creator of Stegpy
+Thank you to Karina Vorozheva and Unsplash for use of the free/open source image in temp_jpg.jpg
