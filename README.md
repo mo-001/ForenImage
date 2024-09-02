@@ -9,5 +9,14 @@ Tool for Master's Dissertation 2024
 - BinAscii
 - Numpy
 - TkinterMapView
-## Documentation
-To be added
+- Hashlib
+- CV2
+### Installation
+1. Install EXIFTool from any available source.
+2. Put EXIFTool into the PATH variable/equivalent for non-Windows machines
+3. Run pip install requirements.txt to install all required packages
+4. Run the application
+
+## Acknowledgements
+Thank you to Baldanos - creator of Stegpy
+Thank you to Karina Vorozheva and Unsplash for use of the free/open source image in temp_jpg.jpg
