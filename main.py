@@ -503,7 +503,7 @@ class ForenImage(Tk):
             self.sha1_text.set("SHA1 Hash: {0}".format(sha1_value.hexdigest()))
 
             self.detect_steganography()
-            # self.process_copymove()
+            self.process_copymove()
             self.process_image_manip()
 
 
@@ -584,7 +584,7 @@ class ForenImage(Tk):
             self.md5_text.set("MD5 Hash: {0}".format(md5_value.hexdigest()))
             self.sha1_text.set("SHA1 Hash: {0}".format(sha1_value.hexdigest()))
             self.detect_steganography()
-            # self.process_copymove()
+            self.process_copymove()
             self.process_image_manip()
 
     def validate_files(self, files):
